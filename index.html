@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herald Global Academy - Apply</title>
+    <style>
+        /* Base Styles matching Herald Global Academy Branding */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+        }
+
+        /* Hero Section with Background Overlay */
+        .hero-section {
+            background-image: linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.9)), url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Container for Content and Form */
+        .container {
+            display: flex;
+            max-width: 1200px;
+            width: 100%;
+            gap: 50px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Left Side: Copy */
+        .hero-content {
+            flex: 1;
+            min-width: 300px;
+        }
+        .hero-content h1 {
+            font-size: 3.5rem;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        .hero-content p {
+            font-size: 1.2rem;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        /* Right Side: The Application Form Card */
+        .form-card {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-top: 5px solid #4874CD; /* Herald Blue */
+        }
+        .form-card h3 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: #213153;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #444;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .submit-btn {
+            background-color: #4874CD;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        .submit-btn:hover {
+            background-color: #213153;
+        }
+
+        /* Success Message (Hidden by default) */
+        #success-message {
+            display: none;
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hero-section">
+        <div class="container">
+            
+            <div class="hero-content">
+                <h1>Empowering Careers.<br>Enabling Futures.</h1>
+                <p>Join thousands of students who have chosen Herald Global Academy to build real, job-ready skills. Apply today to secure your spot in our upcoming digital employment cohorts.</p>
+            </div>
+
+            <div class="form-card">
+                <h3>Start Your Application</h3>
+                <p style="font-size: 0.9rem; color: #666; margin-bottom: 25px;">Enter your details below to instantly connect with our admissions team.</p>
+                
+                <form id="academy-apply-form">
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" name="firstName" required placeholder="e.g. Jane">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" required placeholder="jane.doe@example.com">
+                    </div>
+                    
+                    <button type="submit" class="submit-btn" id="submit-button">Submit Application</button>
+                </form>
+
+                <div id="success-message">
+                    🎉 Application submitted securely! Check your email.
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Paste the fetch logic from your VS Code screenshot right here!
+        document.getElementById('academy-apply-form').addEventListener('submit', async function(event) {
+            event.preventDefault(); 
+
+            // Visual feedback for the demo
+            const btn = document.getElementById('submit-button');
+            btn.innerText = "Sending...";
+            btn.style.opacity = "0.7";
+
+            // 1. Grab the form data
+            const userEmail = document.getElementById('email').value;
+            const userFirstName = document.getElementById('firstName').value;
+
+            // 2. Set up the Brevo API request
+            const endpoint = 'https://api.brevo.com/v3/contacts';
+            const apiKey = 'YOUR_BREVO_API_KEY_HERE'; // Replace with your temporary Brevo Key
+
+            const payload = {
+                email: userEmail,
+                attributes: {
+                    FIRSTNAME: userFirstName,
+                    PROGRAM: "Digital Employment Foundations"
+                },
+                listIds: [2] // Ensure you have a list ID 2 in Brevo, or change this to your default list ID
+            };
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'api-key': apiKey
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok || response.status === 201 || response.status === 204) {
+                    console.log("Success! Lead created in Brevo.");
+                    // Show success message to the executives
+                    document.getElementById('academy-apply-form').style.display = 'none';
+                    document.getElementById('success-message').style.display = 'block';
+                } else {
+                    const error = await response.json();
+                    console.error("Brevo Error:", error);
+                    btn.innerText = "Error - Check Console";
+                }
+            } catch (error) {
+                console.error("Network Error:", error);
+                btn.innerText = "Network Error";
+            }
+        });
+    </script>
+</body>
+</html>
