@@ -7,38 +7,56 @@ const rateLimit = require('express-rate-limit');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. Middleware
+// 1. Global Middleware
 app.use(express.json());
 
-// 2. CORS Security (Behnam: Restrict this to apply.heraldglobalacademy.com)
+// 2. CORS Security (Allows your GoHighLevel staging page to talk to this server)
 app.use(cors({
-    origin: '*' // Change this in production!
+    origin: '*' 
 }));
 
-// 3. Rate Limiting (Behnam: Configure this to prevent spam)
+// 3. Rate Limiting (Prevents automated bot spam)
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // Limit each IP to 10 requests per window
-    message: "Too many referrals submitted from this IP, please try again later."
+    windowMs: 15 * 60 * 1000, // 15-minute window
+    max: 25, // Limit each IP to 25 submissions per window
+    message: { error: "Too many requests from this IP. Please try again later." }
 });
 
-// 4. The Secure Proxy Endpoint
+// 4. The Live Secure Proxy Endpoint
 app.post('/api/referral', apiLimiter, async (req, res) => {
     try {
-        const brevoEndpoint = 'https://api.brevo.com/v3/contacts';
-        const apiKey = process.env.BREVO_API_KEY;
+        // Validate that we actually received data
+        if (!req.body || !req.body.email) {
+            return res.status(400).json({ error: "Missing required contact email." });
+        }
 
-        // Behnam: Wire up the axios POST request to Brevo here
-        // using req.body as the payload and the apiKey in the headers.
+        console.log(`[Proxy] Intercepted submission for: ${req.body.email}`);
 
-        res.status(200).json({ message: "Secure proxy endpoint hit successfully!" });
+        // Forward the exact incoming payload to Brevo's API
+        const response = await axios.post('https://api.brevo.com/v3/contacts', req.body, {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'api-key': process.env.BREVO_API_KEY // Kept hidden on the server
+            }
+        });
+
+        // Respond back to your frontend with success status
+        console.log("[Proxy] Successfully synced with Brevo CRM.");
+        return res.status(200).json({ message: "Referral sync complete.", data: response.data });
 
     } catch (error) {
-        console.error("Proxy Error:", error);
-        res.status(500).json({ error: "Failed to route data to CRM" });
+        // Log detailed error response if Brevo rejects the payload
+        if (error.response) {
+            console.error("[Proxy Error] Brevo rejected payload:", error.response.data);
+            return res.status(error.response.status).json({ error: error.response.data });
+        }
+        
+        console.error("[Proxy Error] Network failure:", error.message);
+        return res.status(500).json({ error: "Internal Gateway Routing Error" });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Secure proxy server running on port ${PORT}`);
+    console.log(`====> Secure Proxy Active: http://localhost:${PORT}`);
 });
