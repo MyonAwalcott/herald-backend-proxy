@@ -57,6 +57,52 @@ app.post('/api/referral', apiLimiter, async (req, res) => {
     }
 });
 
+app.post('/api/apply', apiLimiter, async (req, res) => {
+  const { firstName, lastName, email, phone, address, statusInCanada, referralCode, salesRep } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Missing required contact email." });
+  }
+
+  // 1. Forward to Odoo CRM
+  let odooOk = false;
+  try {
+    await axios.post(process.env.ODOO_WEBHOOK_URL, {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone,
+      address,
+      status_in_canada: statusInCanada,
+      referral_code: referralCode,
+      sales_rep: salesRep,
+    });
+    odooOk = true;
+    console.log(`[Proxy] Lead sent to Odoo: ${email}`);
+  } catch (err) {
+    console.error('[Proxy Error] Odoo webhook failed:', err.message);
+  }
+
+  // 2. Parallel-run: also forward to Brevo (translated to Brevo's shape)
+  let brevoOk = false;
+  try {
+    await axios.post('https://api.brevo.com/v3/contacts', {
+      email,
+      attributes: { FIRSTNAME: firstName, LASTNAME: lastName, SMS: phone },
+      listIds: [2],
+      updateEnabled: true,
+    }, {
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY }
+    });
+    brevoOk = true;
+  } catch (err) {
+    console.error('[Proxy Error] Brevo sync failed:', err.response?.data || err.message);
+  }
+
+  if (odooOk || brevoOk) return res.json({ ok: true, odoo: odooOk, brevo: brevoOk });
+  return res.status(500).json({ ok: false });
+});
+
 app.listen(PORT, () => {
     console.log(`====> Secure Proxy Active: http://localhost:${PORT}`);
 });
