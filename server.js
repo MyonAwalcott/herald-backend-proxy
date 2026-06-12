@@ -57,8 +57,10 @@ app.post('/api/referral', apiLimiter, async (req, res) => {
     }
 });
 
+// 5. Apply Form Endpoint (Odoo CRM + Brevo parallel run)
 app.post('/api/apply', apiLimiter, async (req, res) => {
-  const { firstName, lastName, email, phone, address, statusInCanada, referralCode, salesRep } = req.body;
+  // FIX 1: serviceRequired added to the destructure
+  const { firstName, lastName, email, phone, address, statusInCanada, referralCode, salesRep, serviceRequired } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: "Missing required contact email." });
@@ -76,6 +78,7 @@ app.post('/api/apply', apiLimiter, async (req, res) => {
       status_in_canada: statusInCanada,
       referral_code: referralCode,
       sales_rep: salesRep,
+      service_required: serviceRequired, // FIX 2: forwarded to Odoo
     });
     odooOk = true;
     console.log(`[Proxy] Lead sent to Odoo: ${email}`);
@@ -88,13 +91,24 @@ app.post('/api/apply', apiLimiter, async (req, res) => {
   try {
     await axios.post('https://api.brevo.com/v3/contacts', {
       email,
-      attributes: { FIRSTNAME: firstName, LASTNAME: lastName, SMS: phone },
+      attributes: {
+        FIRSTNAME: firstName,
+        LASTNAME: lastName,
+        PHONE: phone,
+        STATUS: statusInCanada,
+        ADDRESS: address,
+        SALES_REP: salesRep,
+        REFERRAL_CODE: referralCode,
+        PROGRAM: "Student Application Submission",
+        SERVICE_REQUIRED: serviceRequired
+      },
       listIds: [2],
       updateEnabled: true,
     }, {
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY }
     });
     brevoOk = true;
+    console.log(`[Proxy] Contact synced to Brevo: ${email}`);
   } catch (err) {
     console.error('[Proxy Error] Brevo sync failed:', err.response?.data || err.message);
   }
