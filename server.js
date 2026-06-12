@@ -5,6 +5,7 @@ const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // 1. Global Middleware
